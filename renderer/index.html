@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline';">
+  <title>批量文件重命名工具</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Welcome Modal -->
+  <div class="welcome-overlay" id="welcomeOverlay" style="display:none;">
+    <div class="welcome-modal">
+      <div class="welcome-header">
+        <h2>欢迎使用批量文件重命名工具</h2>
+        <span class="welcome-version">v1.0.100</span>
+      </div>
+      <div class="welcome-body">
+        <p class="welcome-author">开发者：微雨扬</p>
+        <div class="welcome-section">
+          <h3>功能介绍</h3>
+          <ul>
+            <li>拖拽或点击添加文件，支持单个 / 批量 / 文件夹导入</li>
+            <li>9 种命名规则：序号、查找替换、前缀后缀、删除文本、大小写转换、正则替换、日期命名、插入文本、扩展名修改</li>
+            <li>文件排序（按名称、修改日期、创建日期、大小、类型）</li>
+            <li>预览重命名结果，自动检测命名冲突</li>
+            <li>多选文件，仅对选中的文件执行操作</li>
+            <li>右键菜单：单个重命名 / 移除文件</li>
+            <li>一键撤销操作</li>
+            <li>导出重命名映射表（CSV 格式）</li>
+          </ul>
+        </div>
+        <label class="welcome-checkbox-label">
+          <input type="checkbox" id="welcomeNoShow"> 不再提示
+        </label>
+      </div>
+      <div class="welcome-footer">
+        <button class="btn btn-primary" id="welcomeStartBtn">开始使用</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="header">
+    <h1>批量文件重命名工具</h1>
+    <div class="header-right">
+      <span class="file-count" id="fileCount">共 0 个文件</span>
+      <button class="btn-help" id="btnHelp" title="查看帮助">?</button>
+    </div>
+  </header>
+
+  <div class="main-container">
+
+    <!-- Left Panel: File List -->
+    <section class="panel panel-left">
+      <div class="panel-header">
+        <h2>文件列表</h2>
+        <div class="btn-group">
+          <button class="btn btn-primary" id="btnAddFiles">+ 添加文件</button>
+          <button class="btn btn-outline" id="btnAddFolder">📁 添加文件夹</button>
+        </div>
+      </div>
+
+      <!-- Sort Controls -->
+      <div class="sort-bar">
+        <label>排序：</label>
+        <select id="sortBy">
+          <option value="name">文件名</option>
+          <option value="modifiedTime">修改日期</option>
+          <option value="createdTime">创建日期</option>
+          <option value="size">文件大小</option>
+          <option value="ext">类型</option>
+        </select>
+        <select id="sortOrder">
+          <option value="asc">升序</option>
+          <option value="desc">降序</option>
+        </select>
+        <button class="btn btn-sm btn-outline" id="btnSort">排序</button>
+      </div>
+
+      <!-- Drag & Drop Zone -->
+      <div class="drop-zone" id="dropZone">
+        <div class="drop-zone-content">
+          <div class="drop-icon">📂</div>
+          <p>拖拽文件到此处</p>
+          <p class="drop-hint">或点击上方按钮添加文件</p>
+        </div>
+      </div>
+
+      <!-- File List -->
+      <div class="file-list" id="fileList"></div>
+
+      <!-- Clear Button -->
+      <div class="file-list-actions" id="fileActions" style="display:none;">
+        <button class="btn btn-sm btn-danger" id="btnClear">🗑 清空列表</button>
+      </div>
+    </section>
+
+    <!-- Right Panel: Naming Rules -->
+    <section class="panel panel-right">
+      <div class="panel-header">
+        <h2>命名规则</h2>
+      </div>
+
+      <!-- Rule Type Selection -->
+      <div class="rule-tabs" id="ruleTabs">
+        <button class="rule-tab active" data-rule="sequential">序号</button>
+        <button class="rule-tab" data-rule="replace">查找替换</button>
+        <button class="rule-tab" data-rule="prefix">前缀/后缀</button>
+        <button class="rule-tab" data-rule="remove">删除文本</button>
+        <button class="rule-tab" data-rule="case">大小写</button>
+        <button class="rule-tab" data-rule="regex">正则</button>
+        <button class="rule-tab" data-rule="date">日期</button>
+        <button class="rule-tab" data-rule="insert">插入</button>
+        <button class="rule-tab" data-rule="ext">扩展名</button>
+      </div>
+
+      <!-- Rule Config Panels -->
+      <div class="rule-config" id="ruleConfig">
+
+        <!-- Sequential -->
+        <div class="rule-panel active" data-rule="sequential">
+          <div class="form-group">
+            <label>命名格式</label>
+            <div class="format-hint">使用 <code>{n}</code> 表示序号，例如：<code>文档_{n}</code></div>
+            <input type="text" id="seqPattern" class="form-input" value="文档_{n}" placeholder="例如: 文档_{n}">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>起始序号</label>
+              <input type="number" id="seqStart" class="form-input" value="1" min="0">
+            </div>
+            <div class="form-group">
+              <label>位数补零</label>
+              <input type="number" id="seqPadding" class="form-input" value="3" min="1" max="10">
+            </div>
+            <div class="form-group">
+              <label>递增步长</label>
+              <input type="number" id="seqStep" class="form-input" value="1" min="1">
+            </div>
+          </div>
+        </div>
+
+        <!-- Find & Replace -->
+        <div class="rule-panel" data-rule="replace">
+          <div class="form-group">
+            <label>查找文本</label>
+            <input type="text" id="repFind" class="form-input" placeholder="输入要查找的文本">
+          </div>
+          <div class="form-group">
+            <label>替换为</label>
+            <input type="text" id="repWith" class="form-input" placeholder="替换后的文本（留空则删除）">
+          </div>
+          <label class="checkbox-label">
+            <input type="checkbox" id="repCaseSensitive"> 区分大小写
+          </label>
+        </div>
+
+        <!-- Prefix / Suffix -->
+        <div class="rule-panel" data-rule="prefix">
+          <div class="form-group">
+            <label>添加文本</label>
+            <div class="format-hint">支持 <code>{n}</code> 表示序号，例如：<code>第{n}_</code></div>
+            <input type="text" id="preText" class="form-input" placeholder="例如: 第{n}_  或 _v2" value="">
+          </div>
+          <div class="form-row">
+            <label class="radio-label">
+              <input type="radio" name="prePosition" value="prefix" checked> 前缀（开头）
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="prePosition" value="suffix"> 后缀（结尾，扩展名前）
+            </label>
+          </div>
+        </div>
+
+        <!-- Remove Text -->
+        <div class="rule-panel" data-rule="remove">
+          <div class="form-group">
+            <label>要删除的文本</label>
+            <input type="text" id="remText" class="form-input" placeholder="输入要删除的文本">
+          </div>
+          <div class="form-group">
+            <label>删除位置</label>
+            <select id="remPosition" class="form-input">
+              <option value="all">全部出现</option>
+              <option value="start">仅开头</option>
+              <option value="end">仅结尾</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Change Case -->
+        <div class="rule-panel" data-rule="case">
+          <div class="form-group">
+            <label>转换方式</label>
+            <select id="caseType" class="form-input">
+              <option value="lower">全部小写</option>
+              <option value="upper">全部大写</option>
+              <option value="title">首字母大写</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>作用范围</label>
+            <select id="caseScope" class="form-input">
+              <option value="name">仅文件名（不含扩展名）</option>
+              <option value="full">完整文件名</option>
+              <option value="ext">仅扩展名</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Regex -->
+        <div class="rule-panel" data-rule="regex">
+          <div class="form-group">
+            <label>正则表达式</label>
+            <input type="text" id="regexPattern" class="form-input" placeholder="例如: \s+">
+          </div>
+          <div class="form-group">
+            <label>替换为</label>
+            <input type="text" id="regexReplace" class="form-input" placeholder="替换文本（支持 $1, $2 等）">
+          </div>
+          <div class="form-hint">提示：支持 JavaScript 正则语法，可以使用捕获组 $1, $2</div>
+        </div>
+
+        <!-- Date/Time -->
+        <div class="rule-panel" data-rule="date">
+          <div class="form-group">
+            <label>日期格式</label>
+            <div class="format-hint">
+              常用格式：
+              <code>YYYY-MM-DD</code>
+              <code>YYYYMMDD</code>
+              <code>YYYY-MM-DD_HHmm</code>
+            </div>
+            <input type="text" id="dateFormat" class="form-input" value="YYYY-MM-DD" placeholder="YYYY-MM-DD">
+          </div>
+          <div class="form-group">
+            <label>日期来源</label>
+            <select id="dateSource" class="form-input">
+              <option value="current">当前时间</option>
+              <option value="modified">文件修改日期</option>
+              <option value="created">文件创建日期</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>命名格式</label>
+            <div class="format-hint">使用 <code>{date}</code> 表示日期，例如：<code>备份_{date}</code></div>
+            <input type="text" id="datePattern" class="form-input" value="{date}" placeholder="例如: 备份_{date}">
+          </div>
+        </div>
+
+        <!-- Insert Text -->
+        <div class="rule-panel" data-rule="insert">
+          <div class="form-group">
+            <label>插入的文本</label>
+            <input type="text" id="insText" class="form-input" placeholder="输入要插入的文本">
+          </div>
+          <div class="form-group">
+            <label>插入位置（字符索引，从 0 开始）</label>
+            <input type="number" id="insPosition" class="form-input" value="0" min="0">
+          </div>
+          <div class="form-hint">提示：0 表示开头，负数表示从末尾开始计算</div>
+        </div>
+
+        <!-- Extension -->
+        <div class="rule-panel" data-rule="ext">
+          <div class="form-group">
+            <label>新的扩展名</label>
+            <input type="text" id="extNew" class="form-input" placeholder="例如: pdf" value="">
+          </div>
+          <div class="form-hint">不包含点号，留空则移除扩展名</div>
+        </div>
+
+      </div>
+
+      <!-- Preview Button -->
+      <button class="btn btn-accent btn-full" id="btnPreview">预览重命名结果</button>
+    </section>
+  </div>
+
+  <!-- Preview Section -->
+  <section class="preview-section" id="previewSection" style="display:none;">
+    <div class="preview-header">
+      <h2>预览</h2>
+      <span class="preview-count" id="previewCount">0 个文件</span>
+    </div>
+    <div class="preview-table-wrapper">
+      <table class="preview-table" id="previewTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>原文件名</th>
+            <th>→</th>
+            <th>新文件名</th>
+            <th>状态</th>
+          </tr>
+        </thead>
+        <tbody id="previewBody"></tbody>
+      </table>
+    </div>
+    <div class="preview-actions">
+      <button class="btn btn-primary btn-lg" id="btnExecute">执行重命名</button>
+      <button class="btn btn-outline btn-lg" id="btnCancelPreview">取消预览</button>
+      <button class="btn btn-outline btn-lg" id="btnUndo" disabled>↩ 撤销</button>
+      <button class="btn btn-outline btn-lg" id="btnExport">📄 导出映射表</button>
+    </div>
+  </section>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Context Menu -->
+  <div class="context-menu" id="contextMenu">
+    <div class="context-menu-item" id="ctxRename">✏️ 重命名</div>
+    <div class="context-menu-divider"></div>
+    <div class="context-menu-item danger" id="ctxRemove">🗑 移除</div>
+  </div>
+
+  <!-- Drop overlay -->
+  <div class="drop-overlay" id="dropOverlay">
+    <div class="drop-overlay-content">
+      <span class="drop-overlay-icon">📂</span>
+      <span>释放鼠标添加文件</span>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

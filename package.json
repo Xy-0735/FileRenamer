@@ -1,0 +1,39 @@
+{
+  "name": "file-renamer",
+  "version": "1.0.0",
+  "description": "批量文件重命名工具 - Batch File Renamer",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "node build.js",
+    "pack": "node build.js"
+  },
+  "build": {
+    "appId": "com.filerenamer.app",
+    "productName": "FileRenamer",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*"
+    ],
+    "win": {
+      "target": "portable"
+    },
+    "portable": {
+      "artifactName": "FileRenamer-${version}-portable.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false
+    }
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.0.0",
+    "electron": "^34.0.0",
+    "electron-builder": "^25.0.0"
+  }
+}
